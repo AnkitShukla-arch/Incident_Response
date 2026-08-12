@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Performance Matrix — Incident Memory</title>
+<style>
+  :root {
+    --bg: #0a0a0b;
+    --panel: #101012;
+    --panel-2: #161619;
+    --panel-3: #1c1c1f;
+    --border: #26262b;
+    --border-strong: #34343a;
+    --text: #ededef;
+    --text-2: #a1a1ab;
+    --text-3: #71717a;
+    --accent: #5e6ad2;
+    --accent-hover: #6c77dc;
+    --green: #4ade80;
+    --red: #f87171;
+    --amber: #fbbf24;
+    --orange: #fb923c;
+    --cyan: #22d3ee;
+    --purple: #a78bfa;
+    --mono: "SF Mono", "Cascadia Mono", Consolas, "Roboto Mono", monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", sans-serif;
+    --r: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scrollbar-color: #2c2c31 transparent; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: var(--sans); font-size: 14px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px 72px; }
+
+  /* ---------- top bar ---------- */
+  .topbar {
+    position: sticky; top: 0; z-index: 40;
+    background: rgba(10, 10, 11, 0.82);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 26px;
+  }
+  .topbar-inner {
+    max-width: 1080px; margin: 0 auto; padding: 0 24px;
+    height: 58px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .mark {
+    width: 30px; height: 30px; border-radius: 8px;
+    border: 1.5px solid var(--accent); display: grid; place-items: center;
+  }
+  .mark::after { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+  .brand-name { font-size: 14.5px; font-weight: 600; }
+  .brand-sub { font-size: 12px; color: var(--text-3); margin-top: 1px; }
+  .top-actions { display: flex; align-items: center; gap: 14px; }
+  a.btn { text-decoration: none; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    border-radius: 8px; padding: 8px 13px; font: inherit; font-size: 13px; font-weight: 500;
+    cursor: pointer; border: 1px solid transparent;
+    transition: background .15s ease, border-color .15s ease, color .15s ease;
+  }
+  .btn-ghost { background: transparent; color: var(--text-2); border-color: var(--border); }
+  .btn-ghost:hover { background: var(--panel-2); color: var(--text); border-color: var(--border-strong); }
+  .stat { display: flex; align-items: baseline; gap: 8px; }
+  .stat-num { font-family: var(--mono); font-size: 16px; font-weight: 600; }
+  .stat-lbl { font-size: 11.5px; color: var(--text-3); line-height: 1.3; text-align: right; }
+
+  /* ---------- page head ---------- */
+  .page-head {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap; margin-bottom: 20px;
+  }
+  .page-head h1 { font-size: 20px; font-weight: 700; letter-spacing: .2px; }
+  .page-head h1 span { color: var(--text-3); font-weight: 400; }
+  .page-head .hint { color: var(--text-3); font-size: 12.5px; margin-top: 5px; }
+  .pills { display: flex; gap: 8px; flex-wrap: wrap; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 500; border-radius: 6px; padding: 3px 9px;
+    border: 1px solid var(--border-strong); color: var(--text-2); white-space: nowrap;
+  }
+  .pill.mono { font-family: var(--mono); }
+  .pill.ok { background: rgba(74,222,128,.10); color: var(--green); border-color: rgba(74,222,128,.28); }
+  .pill.bad { background: rgba(248,113,113,.10); color: var(--red); border-color: rgba(248,113,113,.28); }
+
+  /* ---------- KPI cards ---------- */
+  .kpis {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
+    gap: 14px; margin-bottom: 20px;
+  }
+  .kpi {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--r); padding: 16px;
+    transition: border-color .15s ease, transform .15s ease;
+  }
+  .kpi:hover { border-color: var(--border-strong); transform: translateY(-1px); }
+  .kpi .v { font-size: 20px; font-weight: 700; font-family: var(--mono); }
+  .kpi .k { color: var(--text-3); font-size: 11.5px; margin-top: 5px; letter-spacing: .02em; }
+  .kpi .s { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+
+  /* ---------- cards ---------- */
+  .cols2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 880px) { .cols2 { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--r); padding: 20px; margin-bottom: 20px;
+  }
+  .cols2 .card { margin-bottom: 20px; }
+  .card-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; margin-bottom: 14px; flex-wrap: wrap;
+  }
+  h2 { font-size: 12px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--text-2); }
+  .hint { font-size: 12px; color: var(--text-3); font-weight: 400; letter-spacing: 0; text-transform: none; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; }
+  .lg { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--text-2); }
+  .sw { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+
+  /* ---------- latency bars ---------- */
+  .stage { padding: 9px 0; border-bottom: 1px solid var(--border); }
+  .stage:last-child { border-bottom: none; padding-bottom: 0; }
+  .stage:first-child { padding-top: 0; }
+  .stage-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+  .stage-name { font-size: 12.5px; font-weight: 600; }
+  .stage-nums { font-family: var(--mono); font-size: 10px; color: var(--text-3); white-space: nowrap; }
+  .track {
+    position: relative; height: 18px; border-radius: 4px;
+    background: var(--panel-2); overflow: hidden;
+  }
+  .bar {
+    position: absolute; top: 0; left: 0; height: 100%;
+    border-radius: 4px; transition: width .6s ease;
+  }
+  .bar.mean { background: var(--accent); opacity: .9; }
+  .bar.p50 { background: var(--cyan); opacity: .72; }
+  .bar.p95 { background: var(--amber); opacity: .45; }
+
+  /* ---------- vertical bars (recall) ---------- */
+  .vchart { display: flex; align-items: flex-end; gap: 10px; height: 150px; padding: 4px 6px 0; }
+  .vbar { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 6px; }
+  .vbar .val { font-family: var(--mono); font-size: 10.5px; color: var(--text-2); }
+  .vbar .col { width: 100%; max-width: 62px; border-radius: 5px 5px 0 0; min-height: 3px; transition: height .6s ease; }
+  .vbar .lab { font-size: 10px; color: var(--text-3); text-align: center; line-height: 1.35; margin-top: 6px; }
+
+  /* ---------- histogram ---------- */
+  .hist-wrap { padding-top: 22px; }
+  .hist { display: flex; align-items: flex-end; gap: 3px; height: 150px; position: relative; margin: 0 4px; }
+  .hcol { flex: 1; display: flex; align-items: flex-end; justify-content: center; height: 100%; }
+  .hcol .col { width: 100%; border-radius: 3px 3px 0 0; min-height: 2px; transition: height .4s ease; background: var(--panel-3); }
+  .hcol .col.ok { background: rgba(74,222,128,.55); }
+  .hcol .col.mid { background: rgba(251,191,36,.55); }
+  .hcol .col.low { background: rgba(248,113,113,.5); }
+  .thr-line { position: absolute; top: 0; bottom: 0; width: 0; pointer-events: none; }
+  .thr-line::before { content: ""; position: absolute; top: 0; bottom: 0; left: 0; border-left: 2px dashed; }
+  .thr-line .tl {
+    position: absolute; top: -19px; left: 0; transform: translateX(-50%);
+    font-family: var(--mono); font-size: 9px; white-space: nowrap; padding: 1px 4px;
+    border-radius: 4px; background: var(--panel);
+  }
+  .thr-line.app::before { border-color: var(--amber); }
+  .thr-line.app .tl { color: var(--amber); }
+  .thr-line.cli::before { border-color: var(--red); }
+  .thr-line.cli .tl { color: var(--red); }
+  .haxis { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 9px; color: var(--text-3); margin-top: 5px; padding: 0 4px; }
+
+  /* ---------- donut ---------- */
+  .donut-wrap { display: flex; align-items: center; gap: 26px; flex-wrap: wrap; }
+  .donut-svg { flex: none; }
+  .donut-legend { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 9px; }
+  .ditem { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-2); }
+  .ditem .pct { font-family: var(--mono); font-size: 11px; color: var(--text); width: 46px; text-align: right; }
+  .ditem .ms { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--text-3); }
+  .ditem:hover .ms { color: var(--text); }
+  .donut-note { margin-top: 12px; font-size: 11.5px; color: var(--text-3); }
+
+  /* ---------- tables ---------- */
+  .table-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 620px; }
+  thead th {
+    text-align: left; font-size: 10px; font-weight: 600; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--text-3);
+    background: var(--panel-2); padding: 8px 12px; border-bottom: 1px solid var(--border); white-space: nowrap;
+  }
+  tbody td { padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr { transition: background .12s ease; }
+  tbody tr:hover { background: var(--panel-2); }
+  .mono { font-family: var(--mono); font-size: 11.5px; }
+  .good { color: var(--green); }
+  .warn { color: var(--amber); }
+  .bad { color: var(--red); }
+  .dim { color: var(--text-3); }
+  .chip { display: inline-block; font-size: 10.5px; font-weight: 600; border-radius: 6px; padding: 2px 8px; border: 1px solid; }
+  .chip.pass { background: rgba(74,222,128,.10); color: var(--green); border-color: rgba(74,222,128,.28); }
+  .chip.miss { background: rgba(248,113,113,.10); color: var(--red); border-color: rgba(248,113,113,.28); }
+
+  /* ---------- trend ---------- */
+  svg text { font-family: var(--mono); }
+  .trend-note { font-size: 11.5px; color: var(--text-3); margin-top: 10px; }
+
+  /* ---------- empty state / footer ---------- */
+  .empty {
+    border: 1px dashed var(--border-strong); border-radius: 10px;
+    color: var(--text-2); font-size: 13.5px; padding: 30px 24px; line-height: 1.8;
+  }
+  .empty b { color: var(--text); }
+  .empty code {
+    font-family: var(--mono); font-size: 12px; color: var(--text);
+    background: var(--panel-2); border: 1px solid var(--border); padding: 2px 8px; border-radius: 5px;
+  }
+  .foot { margin-top: 26px; color: var(--text-3); font-size: 12px; text-align: center; line-height: 1.7; }
+  .foot code {
+    color: var(--text-2); background: var(--panel-2); border: 1px solid var(--border);
+    padding: 1px 6px; border-radius: 5px; font-family: var(--mono); font-size: 11px;
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="mark"></div>
+      <div>
+        <div class="brand-name">Incident Memory</div>
+        <div class="brand-sub">Performance matrix dashboard</div>
+      </div>
+    </div>
+    <div class="top-actions">
+      <a class="btn btn-ghost" href="/">← Back to app</a>
+      <div class="stat">
+        <span class="stat-num" style="font-size:13px;">{{ generated_at }}</span>
+        <span class="stat-lbl">last<br>measured</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  {% if not data %}
+    <section class="empty">
+      <b>No benchmark results yet.</b> The dashboard renders the snapshot written by
+      the performance benchmark.<br><br>
+      Run it once (with Postgres + Qdrant up and the app on port 5050):
+      <code>hackenv/Scripts/python.exe benchmark_perf.py</code><br>
+      Then reload this page.<br><br>
+      {% if error %}<span class="dim">{{ error }}</span>{% endif %}
+    </section>
+  {% else %}
+
+  <div class="page-head">
+    <div>
+      <h1>Performance <span>matrix</span></h1>
+      <div class="hint">Qdrant vector search · Gemini embeddings · Groq LLM — measured live by <code>benchmark_perf.py</code></div>
+    </div>
+    <div class="pills">
+      {% set sys = system %}
+      <span class="pill mono">{{ sys.get('pg_active', 0) }} active incidents</span>
+      <span class="pill mono">+{{ sys.get('growth', 0) }} from memory loop</span>
+      <span class="pill mono">threshold {{ histogram.app }}</span>
+      <span class="pill {{ 'ok' if sys.get('synced') else 'bad' }}">{{ 'stores in sync' if sys.get('synced') else 'DRIFT!' }}</span>
+    </div>
+  </div>
+
+  <!-- KPI cards -->
+  <div class="kpis">
+    {% for k in kpis %}
+    <div class="kpi" title="{{ k.s }}">
+      <div class="v" style="color: var(--{{ k.c }})">{{ k.v }}</div>
+      <div class="k">{{ k.k }}</div>
+      <div class="s">{{ k.s }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Latency matrix + budget donut -->
+  <div class="cols2">
+    <section class="card">
+      <div class="card-head">
+        <h2>Latency matrix</h2>
+        <span class="hint">mean / p50 / p95 per stage · bar width vs slowest p95</span>
+      </div>
+      <div class="legend" style="margin-bottom:10px;">
+        <span class="lg"><span class="sw" style="background:var(--accent)"></span>mean</span>
+        <span class="lg"><span class="sw" style="background:var(--cyan)"></span>p50</span>
+        <span class="lg"><span class="sw" style="background:var(--amber)"></span>p95</span>
+      </div>
+      {% for s in latency.rows %}
+      <div class="stage">
+        <div class="stage-top">
+          <span class="stage-name">{{ s.name }}</span>
+          <span class="stage-nums">mean {{ s.mean | round(0) }} · p50 {{ s.p50 | round(0) }} · p95 {{ s.p95 | round(0) }} ms</span>
+        </div>
+        <div class="track" title="{{ s.name }} — mean {{ s.mean | round(0) }} ms, p50 {{ s.p50 | round(0) }} ms, p95 {{ s.p95 | round(0) }} ms (n={{ s.n }})">
+          <div class="bar mean" style="width:{{ s.w_mean | round(1) }}%"></div>
+          <div class="bar p50" style="width:{{ s.w_p50 | round(1) }}%"></div>
+          <div class="bar p95" style="width:{{ s.w_p95 | round(1) }}%"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Latency budget</h2>
+        <span class="hint">where a /api/search call's time goes</span>
+      </div>
+      <div class="donut-wrap">
+        <svg class="donut-svg" width="150" height="150" viewBox="0 0 140 140" role="img" aria-label="Latency budget donut">
+          <circle cx="70" cy="70" r="60" fill="none" stroke="var(--panel-2)" stroke-width="22"/>
+          {% for s in donut.segments %}
+          <circle cx="70" cy="70" r="60" fill="none" stroke="{{ s.color }}" stroke-width="22"
+                  stroke-dasharray="{{ s.dash }} {{ donut.circumference }}"
+                  stroke-dashoffset="{{ -s.offset }}" transform="rotate(-90 70 70)">
+            <title>{{ s.label }} — {{ s.ms }} ms ({{ s.pct }}%)</title>
+          </circle>
+          {% endfor %}
+          <text x="70" y="66" text-anchor="middle" font-size="17" font-weight="700" fill="var(--text)">{{ donut.total }} ms</text>
+          <text x="70" y="82" text-anchor="middle" font-size="8.5" fill="var(--text-3)">retrieve + LLM</text>
+        </svg>
+        <div class="donut-legend">
+          {% for s in donut.segments %}
+          <div class="ditem">
+            <span class="sw" style="background:{{ s.color }}"></span>
+            <span>{{ s.label }}</span>
+            <span class="pct">{{ s.pct }}%</span>
+            <span class="ms">{{ s.ms }} ms</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="donut-note">Embedding + vector search + Postgres enrichment + the Groq LLM suggestion — the four stages of every search.</div>
+    </section>
+  </div>
+
+  <!-- Retrieval quality + thresholds -->
+  <div class="cols2">
+    <section class="card">
+      <div class="card-head">
+        <h2>Retrieval quality</h2>
+        <span class="hint">how often the right past incident surfaces</span>
+      </div>
+      <div class="vchart">
+        {% for r in recall %}
+        <div class="vbar" title="{{ r.lab | replace('<br>', ' ') }} — {{ r.v | round(1) }}%">
+          <span class="val">{{ r.v | round(0) }}%</span>
+          <div class="col" style="height:{{ r.v | round(1) }}%; background:{{ r.c }}"></div>
+          <span class="lab">{{ r.lab | safe }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="donut-note" style="margin-top:14px;">
+        {% set rq = data.retrieval_quality %}
+        Self-retrieval mean score <span class="mono">{{ rq.get('self_mean', 0) }}</span> ·
+        nearest-other mean <span class="mono">{{ rq.get('other_mean', 0) }}</span> ·
+        discrimination margin <span class="mono">{{ rq.get('margin_mean', 0) }}</span>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Score thresholds</h2>
+        <span class="hint">top-1 similarity distribution across all queries</span>
+      </div>
+      <div class="hist-wrap">
+        <div class="hist">
+          {% for b in histogram.bins %}
+          <div class="hcol" title="{{ b.label }}–{{ b.count }} query(ies)">
+            <div class="col {{ b.cls }}" style="height:{{ b.h | round(1) }}%"></div>
+          </div>
+          {% endfor %}
+          {% set hleft = ((histogram.app - 0.60) / 0.40 * 100) | round(1) %}
+          {% set clileft = ((histogram.cli - 0.60) / 0.40 * 100) | round(1) %}
+          <div class="thr-line app" style="left:{{ hleft }}%"><span class="tl">app {{ histogram.app }}</span></div>
+          <div class="thr-line cli" style="left:{{ clileft }}%"><span class="tl">cli {{ histogram.cli }}</span></div>
+        </div>
+        <div class="haxis"><span>0.60</span><span>0.80</span><span>1.00</span></div>
+        <div class="donut-note" style="margin-top:10px;">
+          {% if histogram.scores.mean is not none %}
+          mean <span class="mono">{{ histogram.scores.mean }}</span> ·
+          min <span class="mono">{{ histogram.scores.min }}</span> ·
+          max <span class="mono">{{ histogram.scores.max }}</span> ·
+          above app threshold: <span class="mono">{{ histogram.over_app }}</span> ·
+          above CLI: <span class="mono">{{ histogram.over_cli }}</span>
+          {% endif %}
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Related queries + per-query tables -->
+  <section class="card">
+    <div class="card-head">
+      <h2>Related-query recall</h2>
+      <span class="hint">8 realistic “new incident” descriptions — each must surface its seed</span>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Query</th><th>Expected</th><th>Top-1 score</th><th>Rank</th><th>Top-3 scores</th><th>Result</th></tr></thead>
+        <tbody>
+          {% for d in data.related_queries.details %}
+          <tr>
+            <td class="mono">{{ d.key }}</td>
+            <td class="dim">#{{ d.rank if d.rank else '—' }}</td>
+            <td class="mono">{{ '%.3f' | format(d.top1) }}</td>
+            <td class="mono {{ 'good' if d.rank == 1 else ('warn' if d.rank else 'bad') }}">{{ d.rank if d.rank else 'MISS' }}</td>
+            <td class="mono dim">{{ d.scores | join(', ') }}</td>
+            <td>{% if d.ok %}<span class="chip pass">PASS</span>{% else %}<span class="chip miss">MISS</span>{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>Self-retrieval — per incident</h2>
+      <span class="hint">each incident's own description used as the query; correct answer = itself</span>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>ID</th><th>Rank</th><th>Self score</th><th>Top-1</th><th>Top-5 scores</th></tr></thead>
+        <tbody>
+          {% for p in data.retrieval_quality.per_query %}
+          <tr>
+            <td class="mono dim">#{{ p.id }}</td>
+            <td class="mono {{ 'good' if p.rank == 1 else ('warn' if p.rank and p.rank <= 3 else ('bad' if p.rank else 'bad')) }}">
+              {{ p.rank if p.rank else '—' }}
+            </td>
+            <td class="mono">{% if p.self is not none %}{{ '%.4f' | format(p.self) }}{% else %}—{% endif %}</td>
+            <td class="mono">{{ '%.4f' | format(p.top1) }}</td>
+            <td class="mono dim">{{ p.top5 | join(', ') }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  {% if trend %}
+  <section class="card">
+    <div class="card-head">
+      <h2>Trend across runs</h2>
+      <span class="hint">append-only history — one point per benchmark run</span>
+    </div>
+    <div class="legend" style="margin-bottom:10px;">
+      <span class="lg"><span class="sw" style="background:var(--green)"></span>Recall@5 (%)</span>
+      <span class="lg"><span class="sw" style="background:var(--purple)"></span>full pipeline (ms)</span>
+    </div>
+    <svg viewBox="0 0 {{ trend.W }} {{ trend.H }}" width="100%" role="img" aria-label="Performance trend across benchmark runs">
+      {% for k in [1, 2, 3] %}
+      <line x1="46" x2="{{ trend.W - 64 }}" y1="{{ 16 + k * 130 / 3 }}" y2="{{ 16 + k * 130 / 3 }}" stroke="var(--border)" stroke-width="1" stroke-dasharray="3 4"/>
+      {% endfor %}
+      <defs>
+        <marker id="dotG" viewBox="0 0 8 8" refX="4" refY="4" markerWidth="5" markerHeight="5">
+          <circle cx="4" cy="4" r="3" fill="var(--green)"/>
+        </marker>
+        <marker id="dotP" viewBox="0 0 8 8" refX="4" refY="4" markerWidth="5" markerHeight="5">
+          <circle cx="4" cy="4" r="3" fill="var(--purple)"/>
+        </marker>
+      </defs>
+      <polyline points="{{ trend.r5_poly }}" fill="none" stroke="var(--green)" stroke-width="2.4"
+                marker-start="url(#dotG)" marker-mid="url(#dotG)" marker-end="url(#dotG)"/>
+      <polyline points="{{ trend.pm_poly }}" fill="none" stroke="var(--purple)" stroke-width="2.4" stroke-dasharray="6 4"
+                marker-start="url(#dotP)" marker-mid="url(#dotP)" marker-end="url(#dotP)"/>
+      <text x="{{ trend.end_r5.x + 8 }}" y="{{ trend.end_r5.y + 4 }}" font-size="10.5" font-weight="700" fill="var(--green)">{{ trend.end_r5.v }}%</text>
+      <text x="{{ trend.end_pm.x + 8 }}" y="{{ trend.end_pm.y + 4 }}" font-size="10.5" font-weight="700" fill="var(--purple)">{{ trend.end_pm.v }} ms</text>
+      {% for lab in trend.labels %}
+      <text x="{{ trend.xpos[loop.index0] }}" y="{{ trend.H - 10 }}" text-anchor="middle" font-size="10" fill="var(--text-3)">{{ lab }}</text>
+      {% endfor %}
+    </svg>
+    <div class="trend-note">Each series is normalized to its own min/max. Run <code>benchmark_perf.py</code> again to extend the line.</div>
+  </section>
+  {% endif %}
+
+  {% endif %}
+
+  <footer class="foot">
+    Refresh the numbers: run <code>hackenv/Scripts/python.exe benchmark_perf.py</code> (Postgres + Qdrant up, app on port 5050),
+    then reload this page. Full static report: <code>perf_charts/report.html</code>.
+  </footer>
+</main>
+
+</body>
+</html>

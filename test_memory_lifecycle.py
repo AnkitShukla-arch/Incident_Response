@@ -72,8 +72,17 @@ def main():
     print(f"{BOLD}0. INITIAL STATE{END}")
     sc, d = get("/api/incidents")
     print(f"  active={d['total']} deleted={d.get('deleted')} | newest id {d['incidents'][0]['id']}")
-    assert d["total"] == 17 and d["deleted"] == 0, f"expected 17 active, got {d}"
-    test_id = d["incidents"][0]["id"]  # #26 (the auth incident)
+    # The suite works from whatever state the memory is in (seeds + any number
+    # of UI-resolved rows), as long as nothing is soft-deleted at the start.
+    baseline = d["total"]
+    assert baseline >= 12 and d["deleted"] == 0, f"expected >=12 active with no deleted rows, got {d}"
+    n_resolved = sum(1 for i in d["incidents"] if (i.get("title") or "").startswith("Resolved:"))
+    # Pick the incident the auth query actually matches (top hit, newest first)
+    # so the delete/restore/import search checks are meaningful in any state.
+    auth_hits = search_ids(AUTH_QUERY)
+    assert auth_hits, "the auth query should match at least one incident"
+    test_id = auth_hits[0]
+    print(f"  -> test incident: #{test_id} (top auth-query match)")
 
     print(f"\n{BOLD}1. EXPORT — full snapshot with vectors{END}")
     sc, snap = get("/api/export")
@@ -82,9 +91,9 @@ def main():
     check("snapshot has embedding metadata (provider/model/dims)",
           snap.get("embedding", {}).get("dims") == 768 and "model" in snap["embedding"])
     incs = snap["incidents"]
-    check(f"snapshot has all {len(incs)} incidents", len(incs) == 17)
+    check(f"snapshot has all {len(incs)} incidents", len(incs) == baseline)
     with_vec = [i for i in incs if i.get("vector")]
-    check(f"all {len(with_vec)} active rows carry stored vectors", len(with_vec) == 17)
+    check(f"all {len(with_vec)} active rows carry stored vectors", len(with_vec) == baseline)
     check("vectors are 768-dim (match the embedding model)",
           len(with_vec) > 0 and len(with_vec[0]["vector"]) == 768)
     with open("incidents_backup.json", "w", encoding="utf-8") as f:
@@ -94,7 +103,7 @@ def main():
 
     print(f"\n{BOLD}2. SOFT DELETE #{test_id} (undo-able){END}")
     sc, d = post(f"/api/incidents/{test_id}/delete")
-    check("delete returns ok + active total 16", d.get("ok") and d["total"] == 16)
+    check(f"delete returns ok + active total {baseline - 1}", d.get("ok") and d["total"] == baseline - 1)
     check("Postgres row marked 'deleted'", pg_row(test_id) and pg_row(test_id)[1] == "deleted")
     check("Qdrant point removed", not qdrant_has(test_id))
     check("search no longer matches the deleted incident", test_id not in search_ids(AUTH_QUERY))
@@ -103,7 +112,7 @@ def main():
 
     print(f"\n{BOLD}3. RESTORE #{test_id} (undo){END}")
     sc, d = post(f"/api/incidents/{test_id}/restore")
-    check("restore returns ok + active total 17", d.get("ok") and d["total"] == 17)
+    check(f"restore returns ok + active total {baseline}", d.get("ok") and d["total"] == baseline)
     check("Postgres row back to 'resolved'", pg_row(test_id) and pg_row(test_id)[1] == "resolved")
     check("Qdrant point re-created", qdrant_has(test_id))
     check("search matches the restored incident again", test_id in search_ids(AUTH_QUERY))
@@ -115,7 +124,7 @@ def main():
     )
     print(f"  -> resolved temp incident #{tmp_id} (total {total})")
     sc, d = post(f"/api/incidents/{tmp_id}/purge")
-    check("purge returns ok + total back to 17", d.get("ok") and d["total"] == 17)
+    check(f"purge returns ok + total back to {baseline}", d.get("ok") and d["total"] == baseline)
     check("purged row gone from Postgres", pg_row(tmp_id) is None)
     check("purged point gone from Qdrant", not qdrant_has(tmp_id))
 
@@ -130,8 +139,8 @@ def main():
     with open("incidents_backup.json", encoding="utf-8") as f:
         payload = f.read()
     sc, d = post("/api/import", json.loads(payload))
-    check("import returns ok, 5 created, total 17",
-          d.get("ok") and d.get("rows_created") == 5 and d["total"] == 17)
+    check(f"import returns ok, {n_resolved} created, total {baseline}",
+          d.get("ok") and d.get("rows_created") == n_resolved and d["total"] == baseline)
     sc, d2 = get("/api/incidents")
     restored_ids = {i["id"] for i in d2["incidents"]}
     check("original ids preserved (snapshot ids == current ids)", restored_ids == ids_exported)
@@ -141,8 +150,8 @@ def main():
 
     print(f"\n{BOLD}6. IMPORT IDEMPOTENCY — running it again adds nothing{END}")
     sc, d = post("/api/import", json.loads(payload))
-    check("second import creates 0 rows (updates 17)",
-          d.get("ok") and d.get("rows_created") == 0 and d.get("rows_updated") == 17)
+    check(f"second import creates 0 rows (updates {baseline})",
+          d.get("ok") and d.get("rows_created") == 0 and d.get("rows_updated") == baseline)
 
     print(f"\n{BOLD}7. SERIAL SEQUENCE SAFETY{END}")
     tmp_id, total = resolve_temp(
@@ -150,15 +159,16 @@ def main():
         "1. root cause: test. 2. fix: delete me.",
     )
     check(f"next resolve got a fresh non-colliding id #{tmp_id} (total {total})",
-          tmp_id == max(ids) + 1 and total == 18)
+          tmp_id == max(ids) + 1 and total == baseline + 1)
     sc, d = post(f"/api/incidents/{tmp_id}/purge")
 
     print(f"\n{BOLD}FINAL STATE{END}")
     sc, d = get("/api/incidents")
     qn = qdrant_client.count(collection_name=COLLECTION_NAME, exact=True).count
     print(f"  Postgres active={d['total']} deleted={d['deleted']} | Qdrant={qn}")
-    check("Postgres active == Qdrant points (stores in sync)", d["total"] == qn == 17)
-    check("newest id restored correctly", d["incidents"][0]["id"] == test_id)
+    check("Postgres active == Qdrant points (stores in sync)", d["total"] == qn == baseline)
+    check(f"test incident #{test_id} restored with its original id",
+          test_id in {i["id"] for i in d["incidents"]})
     print(f"\n{BOLD}ALL LIFECYCLE CHECKS COMPLETE{END}")
 
 

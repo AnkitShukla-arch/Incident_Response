@@ -1,0 +1,98 @@
+[
+  {
+    "title": "Payment service timeout under load",
+    "description": "During a flash sale, the payment service started returning 504 Gateway Timeout errors for roughly 15% of requests. Latency on the /charge endpoint spiked from 200ms to over 12s. Traffic was about 6x normal peak load.",
+    "root_cause": "The database connection pool for the payments service was capped at 20 connections. Under load, requests queued waiting for a free connection and eventually timed out at the load balancer before ever reaching the DB.",
+    "resolution": "Increased the connection pool size to 100, added a circuit breaker to fail fast when the pool is exhausted, and added pool utilization to the on-call dashboard so it's caught before it becomes customer-facing.",
+    "service": "payments",
+    "severity": "high"
+  },
+  {
+    "title": "Checkout API 504s during traffic spike",
+    "description": "Checkout API began throwing 504s intermittently starting around 2pm, coinciding with a marketing email blast. Error rate climbed to 20% over 10 minutes before auto-recovering when traffic dropped.",
+    "root_cause": "Same pattern as the payments incident — checkout shares the same Postgres connection pool config, which was never bumped after the payments fix was rolled out to that service.",
+    "resolution": "Applied the same connection pool increase (100 connections) and circuit breaker pattern used in the payments fix. Added a checklist item to propagate infra config fixes across all services sharing the same DB cluster.",
+    "service": "checkout",
+    "severity": "high"
+  },
+  {
+    "title": "Memory leak in notification worker",
+    "description": "The notification worker pod's memory usage climbed steadily over 6 hours until it hit the container limit and was OOMKilled by Kubernetes. This repeated roughly every 6 hours, causing brief gaps in email delivery.",
+    "root_cause": "An event listener was being re-registered on every message processed instead of once at startup, causing listener objects (and their closures) to accumulate and never get garbage collected.",
+    "resolution": "Moved listener registration outside the message-processing loop so it only runs once at startup. Added a memory usage alert at 80% of container limit to catch future leaks before they cause OOMKills.",
+    "service": "notifications",
+    "severity": "medium"
+  },
+  {
+    "title": "Report generation service OOMKilled repeatedly",
+    "description": "The nightly report generation job has been getting OOMKilled twice a week for the past month, always partway through processing the largest customer accounts. Jobs auto-restart but produce incomplete reports.",
+    "root_cause": "Similar failure mode to the notification worker leak — a caching layer intended to avoid recomputation was never evicting old entries, so memory usage grew unbounded across a single job run.",
+    "resolution": "Added an LRU eviction policy with a hard cache size limit. Also added a memory alert modeled on the one added for the notification worker incident.",
+    "service": "reporting",
+    "severity": "medium"
+  },
+  {
+    "title": "Homepage cache stampede after deploy",
+    "description": "Immediately after a routine deploy, the homepage cache was flushed and response times spiked to 3-4s for about 90 seconds as thousands of concurrent requests all hit the database at once trying to regenerate the same cached page.",
+    "root_cause": "Deploys clear the entire cache instead of only invalidating changed keys, and there was no lock/single-flight mechanism to prevent duplicate concurrent regeneration of the same cache entry.",
+    "resolution": "Implemented request coalescing (single-flight) so only one request regenerates a given cache key while others wait for that result. Also switched to selective cache invalidation on deploy instead of a full flush.",
+    "service": "web-frontend",
+    "severity": "medium"
+  },
+  {
+    "title": "Product listing page slow after deploy",
+    "description": "Product listing page latency jumped from 300ms to 2.5s right after a deploy, gradually recovering over about 2 minutes as things settled.",
+    "root_cause": "Same cache stampede pattern seen on the homepage — the product listing page shares the same deploy-time full cache flush and had no coalescing protection either.",
+    "resolution": "Extended the single-flight coalescing fix from the homepage incident to cover the product listing cache keys as well.",
+    "service": "web-frontend",
+    "severity": "low"
+  },
+  {
+    "title": "Auth service outage from expired TLS certificate",
+    "description": "All login attempts started failing with SSL handshake errors at 3am. The internal auth service was completely unreachable from other internal services for 40 minutes until the on-call engineer manually renewed the cert.",
+    "root_cause": "The internal TLS certificate for the auth service expired. There was no automated renewal and no expiry monitoring in place for internal-only certificates.",
+    "resolution": "Set up automated certificate renewal via cert-manager with a 30-day-before-expiry renewal window, and added expiry monitoring alerts for all internal certs, not just public-facing ones.",
+    "service": "auth",
+    "severity": "critical"
+  },
+  {
+    "title": "Internal API gateway cert expiry outage",
+    "description": "Service-to-service calls through the internal API gateway began failing overnight with TLS errors, taking down several dependent services for about 25 minutes.",
+    "root_cause": "Another internal-only TLS certificate expired, on the API gateway this time. This was the same monitoring gap identified in the auth service incident — the fix from that incident hadn't been rolled out gateway-wide yet.",
+    "resolution": "Extended cert-manager auto-renewal and expiry alerting to cover the API gateway and all remaining internal services, closing the gap left after the auth incident.",
+    "service": "api-gateway",
+    "severity": "high"
+  },
+  {
+    "title": "Search results degraded from third-party rate limiting",
+    "description": "Search results started falling back to a generic 'no results' state for about 30% of queries during a 2-hour window. No errors in our own logs, just empty responses from the search relevance API.",
+    "root_cause": "A third-party search relevance API silently rate-limited us after we increased query volume from a new feature launch, and our client had no retry/backoff logic or rate limit monitoring for that dependency.",
+    "resolution": "Added exponential backoff with retry for the search relevance API, plus alerting on 429 response rates from third-party dependencies so rate limiting is caught immediately instead of silently degrading UX.",
+    "service": "search",
+    "severity": "medium"
+  },
+  {
+    "title": "Recommendation engine silently degraded",
+    "description": "The recommendation widget started showing the same fallback 'popular items' list for all users. No alerts fired because the endpoint was still returning 200 OK responses.",
+    "root_cause": "Same pattern as the search incident — a third-party ML scoring API began rate limiting us after a traffic increase, and we had no retry/backoff or rate-limit alerting for that dependency either.",
+    "resolution": "Applied the same backoff and 429-rate alerting pattern used for the search relevance API fix to the recommendation engine's third-party dependency.",
+    "service": "recommendations",
+    "severity": "low"
+  },
+  {
+    "title": "Database disk full causing write failures",
+    "description": "Write operations across multiple services began failing with database errors. Read operations were still working. The primary Postgres instance had run out of disk space.",
+    "root_cause": "Write-ahead log (WAL) files had accumulated far beyond expectations because a replication slot to a decommissioned read replica was never dropped, so Postgres kept retaining WAL files indefinitely for a replica that no longer existed.",
+    "resolution": "Dropped the orphaned replication slot and added a monitoring check that alerts when a replication slot's lag or retained WAL size exceeds a threshold, and a quarterly audit of active replication slots.",
+    "service": "database",
+    "severity": "critical"
+  },
+  {
+    "title": "Race condition causing duplicate order creation",
+    "description": "A small number of customers were charged twice and had two identical orders created when double-clicking the checkout button or refreshing during submission.",
+    "root_cause": "The order creation endpoint had no idempotency key or database-level uniqueness constraint, so two near-simultaneous requests both passed the initial 'does this order exist' check before either had committed.",
+    "resolution": "Added a client-generated idempotency key required on order creation requests, plus a unique database constraint on (customer_id, idempotency_key) as a hard backstop against duplicate orders.",
+    "service": "checkout",
+    "severity": "high"
+  }
+]

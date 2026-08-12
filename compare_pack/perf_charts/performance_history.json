@@ -1,0 +1,309 @@
+[
+  {
+    "generated_at": "2026-08-12 06:40:00",
+    "run": 1,
+    "system": {
+      "pg_active": 19,
+      "pg_all": 19,
+      "qdrant": 19,
+      "with_docs": 1,
+      "synced": true,
+      "seeded": 12,
+      "growth": 7
+    },
+    "quality": {
+      "recall1": 14,
+      "recall3": 18,
+      "recall5": 19,
+      "total": 19,
+      "mrr": 0.8465,
+      "self_mean": 0.8685,
+      "margin_mean": 0.0718
+    },
+    "related": {
+      "recall1": 6,
+      "recall5": 8,
+      "total": 8,
+      "details": []
+    },
+    "latency_ms": {
+      "embedding": 577.0,
+      "qdrant": 40.0,
+      "postgres": 739.0,
+      "retrieval_full": 1357.0,
+      "llm_suggestion": 1578.0,
+      "postmortem": 1373.0,
+      "http_e2e": 2922.0,
+      "pipeline_full": 2720.0
+    },
+    "throughput": {
+      "pipeline_per_min": 22.1,
+      "retrieval_per_min": 44.2,
+      "groq_headroom": 7.9
+    }
+  },
+  {
+    "generated_at": "2026-08-12 18:55:22",
+    "system": {
+      "pg_active": 19,
+      "pg_all": 19,
+      "qdrant": 19,
+      "with_docs": 8,
+      "synced": true,
+      "seeded": 12,
+      "growth": 7
+    },
+    "quality": {
+      "recall1": 14,
+      "recall3": 18,
+      "recall5": 19,
+      "total": 19,
+      "mrr": 0.8465,
+      "self_mean": 0.8685,
+      "margin_mean": 0.0718
+    },
+    "related": {
+      "recall1": 6,
+      "recall5": 8,
+      "total": 8,
+      "details": [
+        {
+          "key": "payment",
+          "rank": 1,
+          "top1": 0.8701,
+          "ok": true,
+          "scores": [
+            0.8701,
+            0.7932,
+            0.7776
+          ]
+        },
+        {
+          "key": "checkout",
+          "rank": 1,
+          "top1": 0.8879,
+          "ok": true,
+          "scores": [
+            0.8879,
+            0.7702,
+            0.7618
+          ]
+        },
+        {
+          "key": "notif",
+          "rank": 2,
+          "top1": 0.8314,
+          "ok": true,
+          "scores": [
+            0.8314,
+            0.8259,
+            0.7563
+          ]
+        },
+        {
+          "key": "report",
+          "rank": 2,
+          "top1": 0.8543,
+          "ok": true,
+          "scores": [
+            0.8543,
+            0.8036,
+            0.6882
+          ]
+        },
+        {
+          "key": "auth",
+          "rank": 1,
+          "top1": 0.7813,
+          "ok": true,
+          "scores": [
+            0.7813,
+            0.6609,
+            0.589
+          ]
+        },
+        {
+          "key": "gateway",
+          "rank": 1,
+          "top1": 0.8449,
+          "ok": true,
+          "scores": [
+            0.8449,
+            0.7829,
+            0.6307
+          ]
+        },
+        {
+          "key": "db",
+          "rank": 1,
+          "top1": 0.7654,
+          "ok": true,
+          "scores": [
+            0.7654,
+            0.6318,
+            0.6126
+          ]
+        },
+        {
+          "key": "dup",
+          "rank": 1,
+          "top1": 0.8627,
+          "ok": true,
+          "scores": [
+            0.8627,
+            0.6121,
+            0.599
+          ]
+        }
+      ]
+    },
+    "latency_ms": {
+      "embedding": 580.0,
+      "qdrant": 37.8,
+      "postgres": 692.6,
+      "retrieval_full": 1310.4,
+      "llm_suggestion": 1739.0,
+      "postmortem": 1636.1,
+      "http_e2e": 3352.8,
+      "pipeline_full": 3295.0
+    },
+    "throughput": {
+      "pipeline_per_min": 18.2,
+      "retrieval_per_min": 45.8,
+      "groq_headroom": 11.8
+    },
+    "run": 2
+  },
+  {
+    "generated_at": "2026-08-12 19:01:30",
+    "system": {
+      "pg_active": 19,
+      "pg_all": 19,
+      "qdrant": 19,
+      "with_docs": 8,
+      "synced": true,
+      "seeded": 12,
+      "growth": 7
+    },
+    "quality": {
+      "recall1": 14,
+      "recall3": 18,
+      "recall5": 19,
+      "total": 19,
+      "mrr": 0.8465,
+      "self_mean": 0.8685,
+      "margin_mean": 0.0718
+    },
+    "related": {
+      "recall1": 6,
+      "recall5": 8,
+      "total": 8,
+      "details": [
+        {
+          "key": "payment",
+          "rank": 1,
+          "top1": 0.8701,
+          "ok": true,
+          "scores": [
+            0.8701,
+            0.7932,
+            0.7776
+          ]
+        },
+        {
+          "key": "checkout",
+          "rank": 1,
+          "top1": 0.8879,
+          "ok": true,
+          "scores": [
+            0.8879,
+            0.7702,
+            0.7618
+          ]
+        },
+        {
+          "key": "notif",
+          "rank": 2,
+          "top1": 0.8314,
+          "ok": true,
+          "scores": [
+            0.8314,
+            0.8259,
+            0.7563
+          ]
+        },
+        {
+          "key": "report",
+          "rank": 2,
+          "top1": 0.8543,
+          "ok": true,
+          "scores": [
+            0.8543,
+            0.8036,
+            0.6882
+          ]
+        },
+        {
+          "key": "auth",
+          "rank": 1,
+          "top1": 0.7813,
+          "ok": true,
+          "scores": [
+            0.7813,
+            0.6609,
+            0.589
+          ]
+        },
+        {
+          "key": "gateway",
+          "rank": 1,
+          "top1": 0.8449,
+          "ok": true,
+          "scores": [
+            0.8449,
+            0.7829,
+            0.6307
+          ]
+        },
+        {
+          "key": "db",
+          "rank": 1,
+          "top1": 0.7654,
+          "ok": true,
+          "scores": [
+            0.7654,
+            0.6318,
+            0.6126
+          ]
+        },
+        {
+          "key": "dup",
+          "rank": 1,
+          "top1": 0.8627,
+          "ok": true,
+          "scores": [
+            0.8627,
+            0.6121,
+            0.599
+          ]
+        }
+      ]
+    },
+    "latency_ms": {
+      "embedding": 579.3,
+      "qdrant": 29.9,
+      "postgres": 763.1,
+      "retrieval_full": 1372.3,
+      "llm_suggestion": 2240.9,
+      "postmortem": 1926.4,
+      "http_e2e": 3583.4,
+      "pipeline_full": 2770.0
+    },
+    "throughput": {
+      "pipeline_per_min": 21.7,
+      "retrieval_per_min": 43.7,
+      "groq_headroom": 8.3
+    },
+    "run": 3
+  }
+]

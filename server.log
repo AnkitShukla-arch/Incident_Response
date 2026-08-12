@@ -1,4 +1,38 @@
-Schema ready (root_cause nullable for UI-resolved incidents).
-Incident Memory running at http://127.0.0.1:5000
+Schema ready (root_cause nullable, postmortem_doc column present).
+Incident Memory running at http://127.0.0.1:5050
  * Serving Flask app 'app'
  * Debug mode: off
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on http://127.0.0.1:5050
+Press CTRL+C to quit
+C:\Users\monis\OneDrive\Desktop\HackwithBanglore 4.0\hackenv\Lib\site-packages\qdrant_client\qdrant_remote.py:290: UserWarning: Failed to obtain server version. Unable to check client-server compatibility. Set check_compatibility=False to skip version check.
+  show_warning(
+127.0.0.1 - - [12/Aug/2026 20:44:47] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [12/Aug/2026 20:44:47] "GET /perf HTTP/1.1" 200 -
+127.0.0.1 - - [12/Aug/2026 20:44:53] "GET /perf HTTP/1.1" 200 -
+127.0.0.1 - - [12/Aug/2026 20:44:53] "GET /perf HTTP/1.1" 200 -
+127.0.0.1 - - [12/Aug/2026 20:44:53] "GET /perf HTTP/1.1" 200 -
+127.0.0.1 - - [12/Aug/2026 20:47:17] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [12/Aug/2026 20:47:18] "GET /api/incidents HTTP/1.1" 200 -
+127.0.0.1 - - [12/Aug/2026 20:47:49] "GET /perf HTTP/1.1" 200 -
+127.0.0.1 - - [12/Aug/2026 21:09:14] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [12/Aug/2026 21:09:15] "GET /api/incidents HTTP/1.1" 200 -
+127.0.0.1 - - [12/Aug/2026 21:25:09] "GET /perf HTTP/1.1" 200 -
+127.0.0.1 - - [12/Aug/2026 22:25:35] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [12/Aug/2026 22:25:35] "GET /api/incidents HTTP/1.1" 503 -
+127.0.0.1 - - [12/Aug/2026 22:26:23] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [12/Aug/2026 22:26:24] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [12/Aug/2026 22:26:25] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [12/Aug/2026 22:26:26] "GET /api/incidents HTTP/1.1" 200 -
+127.0.0.1 - - [12/Aug/2026 22:26:26] "GET /api/incidents HTTP/1.1" 200 -
+127.0.0.1 - - [12/Aug/2026 22:26:27] "GET /api/incidents HTTP/1.1" 200 -
+127.0.0.1 - - [12/Aug/2026 22:26:51] "POST /api/search HTTP/1.1" 400 -
+127.0.0.1 - - [12/Aug/2026 22:27:26] "POST /api/search HTTP/1.1" 400 -
+127.0.0.1 - - [12/Aug/2026 23:17:51] "POST /api/search HTTP/1.1" 400 -
+127.0.0.1 - - [12/Aug/2026 23:23:10] "POST /api/search HTTP/1.1" 200 -
+127.0.0.1 - - [12/Aug/2026 23:23:54] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [12/Aug/2026 23:23:55] "GET /api/incidents HTTP/1.1" 200 -
+127.0.0.1 - - [12/Aug/2026 23:24:01] "POST /api/search HTTP/1.1" 200 -
+127.0.0.1 - - [12/Aug/2026 23:26:31] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [12/Aug/2026 23:26:32] "GET /api/incidents HTTP/1.1" 503 -
+127.0.0.1 - - [12/Aug/2026 23:28:19] "POST /api/search HTTP/1.1" 400 -
