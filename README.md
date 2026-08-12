@@ -13,12 +13,14 @@
 ![Qdrant](https://img.shields.io/badge/Qdrant-Vector%20Search-a855f7?style=for-the-badge)
 ![Gemini](https://img.shields.io/badge/Gemini-Embeddings-4285F4?style=for-the-badge&logo=googlegemini&logoColor=white)
 
-</div>
 
 <p align="center">
   <img src="assets/Pixel Loop GIF by Axel Oil.gif" width="100%" alt="Demo of the memory-compounds loop" />
 </p>
 
+![Groq](https://img.shields.io/badge/Groq-LLM%20(free)-F55036?style=for-the-badge)
+![License](https://img.shields.io/badge/License-MIT-555555?style=for-the-badge)
+</div>
 
 
 ## 🧠 The idea: memory that compounds
