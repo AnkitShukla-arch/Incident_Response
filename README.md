@@ -7,14 +7,11 @@
   <img src="https://readme-typing-svg.herokuapp.com?font=Orbitron&weight=700&size=50&duration=3000&pause=1000&color=00BFFF&center=true&vCenter=true&width=1000&lines=Every+incident+you+resolve;Makes+the+next+one+easier" alt="Typing SVG">
 </p>
 
-
-[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](#)
-[![Flask](https://img.shields.io/badge/Flask-Web%20App-000000?logo=flask&logoColor=white)](#)
-[![Postgres](https://img.shields.io/badge/Postgres-Primary%20Store-4169E1?logo=postgresql&logoColor=white)](#)
-[![Qdrant](https://img.shields.io/badge/Qdrant-Vector%20Search-6A5AFF?logo=qdrant&logoColor=white)](#)
-[![Gemini](https://img.shields.io/badge/Gemini-Embeddings-1A73E8?logo=google&logoColor=white)](#)
-[![Groq](https://img.shields.io/badge/Groq-LLM%20(free)-F55036?logo=groq&logoColor=white)](#)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](#)
+![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![Flask](https://img.shields.io/badge/Flask-Web%20App-000000?style=for-the-badge&logo=flask&logoColor=white)
+![Postgres](https://img.shields.io/badge/Postgres-Primary%20Store-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
+![Qdrant](https://img.shields.io/badge/Qdrant-Vector%20Search-a855f7?style=for-the-badge)
+![Gemini](https://img.shields.io/badge/Gemini-Embeddings-4285F4?style=for-the-badge&logo=googlegemini&logoColor=white)
 
 </div>
 
