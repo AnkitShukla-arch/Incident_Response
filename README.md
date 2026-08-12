@@ -402,8 +402,3 @@ The `compare_pack/` folder is a portable benchmark kit: copy it to another syste
 
 ---
 
-<div align="center">
-
-Built with 💜 for the **HackwithBanglore 4.0** hackathon — free AI tiers, real vector search, and a memory that gets smarter every time an incident is resolved.
-
-</div>
