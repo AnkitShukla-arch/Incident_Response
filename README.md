@@ -18,7 +18,11 @@
 
 </div>
 
----
+<p align="center">
+  <img src="assets/Pixel Loop GIF by Axel Oil.gif" width="100%" alt="Demo of the memory-compounds loop" />
+</p>
+
+
 
 ## 🧠 The idea: memory that compounds
 
@@ -27,7 +31,9 @@ Most incident systems treat every alert as a brand-new mystery. **Incident Memor
 The loop is the whole point:
 
 <!-- animated pipeline diagram -->
-<img src="assets/memory-loop.svg" alt="Animated diagram of the memory-compounds loop" width="100%">
+<p align="left">
+  <img src="assets/Pixel Coding Sticker.gif" width="30%" alt="Demo of the memory-compounds loop" />
+</p>
 
 1. **A new incident arrives** — typed into the demo page or pushed via webhook
 2. **It is embedded** into a vector with Gemini `gemini-embedding-001` (768 dims)
@@ -401,5 +407,6 @@ The `compare_pack/` folder is a portable benchmark kit: copy it to another syste
 - 🔍 **Reranking** — cross-encoder on top of Qdrant hits for tighter top-1 precision
 - 🌐 **Deploy** — the Flask app is WSGI-ready (`flask run` / gunicorn / Render / Railway)
 
----
-
+<p align="center">
+  <img src="assets/Artificial Intelligence Ai Film Sticker by transforms.ai.gif" width="65%" alt="Demo of the memory-compounds loop" />
+</p>
