@@ -1,9 +1,11 @@
+![](Bottom_up.svg)
+
 <div align="center">
+  
+<p align="center">
+  <img src="https://readme-typing-svg.herokuapp.com?font=Orbitron&weight=700&size=50&duration=3000&pause=1000&color=00BFFF&center=true&vCenter=true&width=1000&lines=Every+incident+you+resolve;Makes+the+next+one+easier" alt="Typing SVG">
+</p>
 
-<!-- animated hero banner -->
-<img src="assets/hero.svg" alt="Incident Memory — an on-call memory that grows with every incident you resolve" width="100%">
-
-**An on-call memory that grows with every incident you resolve.**
 
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](#)
 [![Flask](https://img.shields.io/badge/Flask-Web%20App-000000?logo=flask&logoColor=white)](#)
