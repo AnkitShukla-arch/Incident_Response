@@ -1,4 +1,4 @@
-![](Bottom_up.svg)
+![](assets/Bottom_up.svg)
 
 
 <div align="center">
