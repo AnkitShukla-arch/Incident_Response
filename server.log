@@ -1,0 +1,4 @@
+Schema ready (root_cause nullable for UI-resolved incidents).
+Incident Memory running at http://127.0.0.1:5000
+ * Serving Flask app 'app'
+ * Debug mode: off

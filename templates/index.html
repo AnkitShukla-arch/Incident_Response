@@ -1,0 +1,664 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Incident Memory — an on-call memory that learns</title>
+<style>
+  :root {
+    --bg: #0a0a0b;
+    --panel: #101012;
+    --panel-2: #161619;
+    --panel-3: #1c1c1f;
+    --border: #26262b;
+    --border-strong: #34343a;
+    --text: #ededef;
+    --text-2: #a1a1ab;
+    --text-3: #71717a;
+    --accent: #5e6ad2;
+    --accent-hover: #6c77dc;
+    --accent-soft: rgba(94, 106, 210, 0.14);
+    --green: #4ade80;
+    --green-soft: rgba(74, 222, 128, 0.10);
+    --red: #f87171;
+    --red-soft: rgba(248, 113, 113, 0.10);
+    --amber: #fbbf24;
+    --amber-soft: rgba(251, 191, 36, 0.10);
+    --orange: #fb923c;
+    --orange-soft: rgba(251, 146, 60, 0.10);
+    --mono: "SF Mono", "Cascadia Mono", Consolas, "Roboto Mono", monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", sans-serif;
+    --r: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scrollbar-color: #2c2c31 transparent; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px 72px; }
+
+  /* ---------- top bar ---------- */
+  .topbar {
+    position: sticky; top: 0; z-index: 40;
+    background: rgba(10, 10, 11, 0.82);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 28px;
+  }
+  .topbar-inner {
+    max-width: 1080px; margin: 0 auto; padding: 0 24px;
+    height: 58px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .mark {
+    width: 30px; height: 30px; border-radius: 8px;
+    border: 1.5px solid var(--accent);
+    display: grid; place-items: center;
+  }
+  .mark::after {
+    content: ""; width: 7px; height: 7px; border-radius: 50%;
+    background: var(--accent);
+  }
+  .brand-name { font-size: 14.5px; font-weight: 600; letter-spacing: .01em; }
+  .brand-sub { font-size: 12px; color: var(--text-3); margin-top: 1px; }
+  .stat { display: flex; align-items: baseline; gap: 8px; }
+  .stat-num { font-family: var(--mono); font-size: 17px; font-weight: 600; color: var(--text); }
+  .stat-lbl { font-size: 11.5px; color: var(--text-3); line-height: 1.3; text-align: right; }
+
+  /* ---------- cards ---------- */
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .card-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; margin-bottom: 14px; flex-wrap: wrap;
+  }
+  h2 {
+    font-size: 12px; font-weight: 600; letter-spacing: .09em;
+    text-transform: uppercase; color: var(--text-2);
+  }
+  .hint { font-size: 12px; color: var(--text-3); font-weight: 400; letter-spacing: 0; text-transform: none; }
+
+  /* ---------- inputs ---------- */
+  textarea, input, select {
+    width: 100%;
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font: inherit; font-size: 13.5px;
+    outline: none;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  textarea::placeholder { color: var(--text-3); }
+  textarea:focus, select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  select { cursor: pointer; appearance: none; -webkit-appearance: none;
+           background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+           background-repeat: no-repeat; background-position: right 10px center;
+           padding-right: 30px; }
+  label { display: block; font-size: 11.5px; color: var(--text-3); margin-bottom: 4px; letter-spacing: .02em; }
+
+  /* ---------- buttons ---------- */
+  button { font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    border-radius: 8px; padding: 9px 14px;
+    border: 1px solid transparent;
+    transition: background .15s ease, border-color .15s ease, color .15s ease, transform .06s ease;
+    white-space: nowrap;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn-primary {
+    background: var(--accent); color: #f5f6ff; font-weight: 600;
+  }
+  .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+  .btn-ghost {
+    background: transparent; color: var(--text-2);
+    border-color: var(--border);
+  }
+  .btn-ghost:hover { background: var(--panel-2); color: var(--text); border-color: var(--border-strong); }
+  .btn-text {
+    background: none; border: none; padding: 4px 6px;
+    color: var(--text-3); font-size: 12.5px; border-radius: 6px;
+  }
+  .btn-text:hover { color: var(--text); background: var(--panel-2); }
+  .btn-text.danger:hover { color: var(--red); background: var(--red-soft); }
+  .btn svg { flex: none; }
+  .spinner {
+    width: 13px; height: 13px; border-radius: 50%; flex: none;
+    border: 2px solid rgba(255,255,255,.25); border-top-color: #fff;
+    animation: spin .8s linear infinite;
+  }
+  .spinner.dark { border-color: var(--border-strong); border-top-color: var(--text-2); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---------- composer ---------- */
+  .composer-grid { display: grid; grid-template-columns: 1fr 300px; gap: 16px; }
+  @media (max-width: 860px) { .composer-grid { grid-template-columns: 1fr; } }
+  #desc { min-height: 108px; resize: vertical; line-height: 1.55; }
+  .rail { display: flex; flex-direction: column; gap: 12px; }
+  .rail .btn { width: 100%; }
+  .kbd {
+    font-family: var(--mono); font-size: 10.5px; color: var(--text-3);
+    border: 1px solid var(--border); border-radius: 5px; padding: 2px 5px;
+  }
+  .toolbar { display: flex; align-items: center; gap: 8px; }
+  .composer-foot {
+    margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border);
+    display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+  }
+  .hint-line { font-size: 12px; color: var(--text-3); }
+  .pipeline { display: flex; align-items: center; gap: 14px; margin-left: auto; }
+  .p-step { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--text-3); }
+  .p-step .n {
+    width: 16px; height: 16px; border-radius: 50%;
+    border: 1px solid var(--border-strong);
+    display: grid; place-items: center;
+    font-size: 9.5px; font-family: var(--mono);
+  }
+  .p-step.active { color: var(--text); }
+  .p-step.active .n { background: var(--accent); border-color: var(--accent); color: #f5f6ff; }
+  .p-arrow { color: var(--border-strong); font-size: 11px; }
+
+  /* ---------- two-column workspace ---------- */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 860px) { .grid-2 { grid-template-columns: 1fr; } }
+  .grid-2 .card { margin-bottom: 0; }
+
+  /* ---------- matches ---------- */
+  .match {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 13px 14px;
+    margin-bottom: 10px;
+    background: var(--panel-2);
+    transition: border-color .15s ease;
+  }
+  .match:hover { border-color: var(--border-strong); }
+  .match-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .mid { font-family: var(--mono); font-size: 11px; color: var(--text-3); }
+  .m-title { font-weight: 600; font-size: 13.5px; }
+  .m-tags { margin-left: auto; display: flex; gap: 6px; }
+  .pill {
+    font-size: 11px; font-weight: 500; border-radius: 6px; padding: 2px 8px;
+    border: 1px solid var(--border-strong); color: var(--text-2);
+    white-space: nowrap;
+  }
+  .sev-critical { background: var(--red-soft); color: var(--red); border-color: rgba(248,113,113,.28); }
+  .sev-high     { background: var(--orange-soft); color: var(--orange); border-color: rgba(251,146,60,.28); }
+  .sev-medium   { background: var(--amber-soft); color: var(--amber); border-color: rgba(251,191,36,.28); }
+  .sev-low      { background: var(--green-soft); color: var(--green); border-color: rgba(74,222,128,.28); }
+  .match-score { display: flex; align-items: center; gap: 10px; margin: 10px 0 8px; }
+  .track { flex: 1; height: 4px; border-radius: 2px; background: #232329; overflow: hidden; }
+  .track-fill { height: 100%; border-radius: 2px; background: var(--accent); transition: width .5s ease; }
+  .score-pct { font-family: var(--mono); font-size: 12px; color: var(--text-2); width: 40px; text-align: right; }
+  .m-desc { color: var(--text-2); font-size: 12.5px; line-height: 1.55; }
+  details { margin-top: 8px; }
+  summary { cursor: pointer; font-size: 12px; color: var(--text-3); user-select: none; list-style: none; }
+  summary::-webkit-details-marker { display: none; }
+  summary::before { content: "▸ "; font-size: 9px; }
+  details[open] summary::before { content: "▾ "; }
+  summary:hover { color: var(--text-2); }
+  details p { color: var(--text-2); font-size: 12.5px; line-height: 1.6; margin-top: 6px;
+              border-left: 2px solid var(--border); padding-left: 10px; }
+  .empty {
+    border: 1px dashed var(--border-strong); border-radius: 8px;
+    color: var(--text-3); font-size: 12.5px; padding: 18px 16px; line-height: 1.6;
+  }
+  .empty b { color: var(--text-2); font-weight: 600; }
+
+  /* ---------- suggestion panel ---------- */
+  #fix {
+    min-height: 240px; resize: vertical; line-height: 1.6;
+    font-family: var(--sans); font-size: 13px;
+  }
+  .fix-actions { display: flex; align-items: center; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+  .fix-actions .btn { }
+  #resolveMsg { margin-top: 10px; font-size: 12.5px; color: var(--green); }
+  #resolveMsg.err { color: var(--red); }
+
+  /* ---------- memory table ---------- */
+  .table-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 820px; }
+  thead th {
+    text-align: left; font-size: 10.5px; font-weight: 600; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--text-3);
+    background: var(--panel-2);
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  tbody td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr { transition: background .12s ease; }
+  tbody tr:hover { background: var(--panel-2); }
+  tbody tr.deleted-row { opacity: .45; }
+  tbody tr.deleted-row:hover { background: transparent; }
+  tbody tr.new-row { animation: rowflash 1.4s ease; }
+  @keyframes rowflash { 0% { background: var(--accent-soft); } 100% { background: transparent; } }
+  .cell-id { font-family: var(--mono); font-size: 12px; color: var(--text-3); }
+  .cell-title { font-weight: 600; max-width: 300px; }
+  .cell-title .sub { display: block; font-weight: 400; color: var(--text-3);
+                     font-size: 12px; margin-top: 2px;
+                     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 340px; }
+  .cell-mono { font-family: var(--mono); font-size: 12px; color: var(--text-3); white-space: nowrap; }
+  .cell-actions { text-align: right; white-space: nowrap; }
+  .chip { display: inline-block; font-size: 11px; font-weight: 500; border-radius: 6px;
+          padding: 2px 8px; border: 1px solid; }
+  .chip.resolved { background: var(--green-soft); color: var(--green); border-color: rgba(74,222,128,.28); }
+  .chip.deleted { background: var(--red-soft); color: var(--red); border-color: rgba(248,113,113,.28); }
+  .chip.service { background: var(--panel-3); color: var(--text-2); border-color: var(--border-strong); }
+
+  /* ---------- footer / toast ---------- */
+  .foot { margin-top: 34px; color: var(--text-3); font-size: 12px; text-align: center; line-height: 1.7; }
+  .foot code { color: var(--text-2); background: var(--panel-2); border: 1px solid var(--border);
+               padding: 1px 6px; border-radius: 5px; font-family: var(--mono); font-size: 11px; }
+  #toast {
+    position: fixed; right: 20px; bottom: 20px; z-index: 60;
+    max-width: 400px;
+    background: var(--panel-3);
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    padding: 13px 16px;
+    font-size: 13px; line-height: 1.55;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .45);
+    opacity: 0; transform: translateY(8px); pointer-events: none;
+    transition: opacity .2s ease, transform .2s ease;
+  }
+  #toast.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+  #toast b { color: var(--text); font-weight: 600; }
+  #toast .btn-text { margin-left: 6px; color: var(--accent); }
+  #toast .btn-text:hover { color: var(--accent-hover); background: transparent; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="mark"></div>
+      <div>
+        <div class="brand-name">Incident Memory</div>
+        <div class="brand-sub">An on-call memory that grows with every incident you resolve</div>
+      </div>
+    </div>
+    <div class="stat">
+      <span class="stat-num" id="memCount">–</span>
+      <span class="stat-lbl">incidents<br>in memory</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- 1 · New incident -->
+  <section class="card">
+    <div class="card-head">
+      <h2>New incident</h2>
+      <span class="hint">Describe the problem — similar past incidents are retrieved and a fix is suggested</span>
+    </div>
+    <div class="composer-grid">
+      <textarea id="desc" placeholder="Payment API started returning 504s during the flash sale, latency on /charge spiked to 12s…"></textarea>
+      <div class="rail">
+        <div>
+          <label for="service">Service</label>
+          <select id="service"></select>
+        </div>
+        <div>
+          <label for="severity">Severity</label>
+          <select id="severity"></select>
+        </div>
+        <button id="searchBtn" class="btn btn-primary">Search memory &amp; suggest fix</button>
+        <span class="hint-line"><span class="kbd">Ctrl</span> + <span class="kbd">↵</span> to search</span>
+      </div>
+    </div>
+    <div class="composer-foot">
+      <span class="hint-line">Pipeline: every incident passes through the same four stages</span>
+      <div class="pipeline">
+        <span class="p-step" data-step="1"><span class="n">1</span>Seed</span>
+        <span class="p-arrow">→</span>
+        <span class="p-step" data-step="2"><span class="n">2</span>Retrieve</span>
+        <span class="p-arrow">→</span>
+        <span class="p-step" data-step="3"><span class="n">3</span>Suggest</span>
+        <span class="p-arrow">→</span>
+        <span class="p-step" data-step="4"><span class="n">4</span>Write back</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 · Evidence + suggestion -->
+  <div class="grid-2">
+    <section class="card">
+      <div class="card-head">
+        <h2>Similar past incidents</h2>
+        <span class="hint" id="matchesInfo">semantic matches from the memory store</span>
+      </div>
+      <div id="matches"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Suggested fix</h2>
+        <span class="hint">editable — then save it back to memory</span>
+      </div>
+      <textarea id="fix" placeholder="Run a search first. The suggested fix will appear here — you can edit it before saving it to memory."></textarea>
+      <div class="fix-actions">
+        <button id="resolveBtn" class="btn btn-primary" disabled>Mark resolved</button>
+        <span class="hint-line">Saved fixes are embedded and added to memory — the next similar incident will cite them</span>
+      </div>
+      <div id="resolveMsg"></div>
+    </section>
+  </div>
+
+  <!-- 3 · Memory -->
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <h2>Memory</h2>
+        <span class="hint" id="rowsInfo"></span>
+      </div>
+      <div class="toolbar">
+        <button id="exportBtn" class="btn btn-ghost" title="Download a full snapshot of the memory (rows + vectors)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export
+        </button>
+        <button id="importBtn" class="btn btn-ghost" title="Restore a previously exported snapshot">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Import
+        </button>
+        <input type="file" id="importFile" accept=".json,application/json" hidden>
+      </div>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th><th>Incident</th><th>Service</th><th>Severity</th><th>Status</th><th>Resolved</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer class="foot">
+    Incident Memory · Postgres <code>incidents</code> table · Qdrant <code>incidents</code> collection ·
+    Gemini embeddings · Gemini LLM · <code>python app.py</code>
+  </footer>
+</main>
+
+<div id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g,
+  c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const SEV_CLASS = { critical: 'sev-critical', high: 'sev-high', medium: 'sev-medium', low: 'sev-low' };
+const SERVICES = {{ services | tojson }};
+const SEVERITIES = {{ severities | tojson }};
+
+/* ---------- pipeline indicator ---------- */
+function setPipeline(upTo){
+  document.querySelectorAll('.p-step').forEach(el => {
+    el.classList.toggle('active', +el.dataset.step <= upTo);
+  });
+}
+
+/* ---------- memory table ---------- */
+let lastNewId = null;
+async function loadIncidents(){
+  try {
+    const r = await fetch('/api/incidents');
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'failed');
+    $('memCount').textContent = d.total;
+    $('rowsInfo').textContent = d.total + ' active' + (d.deleted ? ' · ' + d.deleted + ' deleted' : '') + ' · newest first';
+    const tbody = $('rows');
+    tbody.innerHTML = d.incidents.map(inc => {
+      const deleted = inc.status === 'deleted';
+      const cls = (inc.id === lastNewId ? 'new-row' : '') + (deleted ? ' deleted-row' : '');
+      const actions = deleted
+        ? `<button class="btn-text" data-action="restore" data-id="${inc.id}">Restore</button>`
+          + `<button class="btn-text danger" data-action="purge" data-id="${inc.id}">Purge</button>`
+        : `<button class="btn-text danger" data-action="delete" data-id="${inc.id}">Delete</button>`;
+      return `<tr${cls ? ' class="' + cls + '"' : ''}>
+        <td class="cell-id">#${inc.id}</td>
+        <td><div class="cell-title">${esc(inc.title)}<span class="sub">${esc(inc.description)}</span></div></td>
+        <td>${inc.service ? `<span class="chip service">${esc(inc.service)}</span>` : '<span class="cell-mono">—</span>'}</td>
+        <td>${inc.severity ? `<span class="pill ${SEV_CLASS[inc.severity] || 'sev-medium'}">${esc(inc.severity)}</span>` : '<span class="cell-mono">—</span>'}</td>
+        <td><span class="chip ${deleted ? 'deleted' : 'resolved'}">${esc(inc.status || 'resolved')}</span></td>
+        <td class="cell-mono">${esc(ts(inc.created_at))}</td>
+        <td class="cell-actions">${actions}</td>
+      </tr>`;
+    }).join('');
+    return d;
+  } catch (e) {
+    $('rows').innerHTML = `<tr><td colspan="7" class="empty">Could not load incidents: ${esc(e.message)}</td></tr>`;
+  }
+}
+function ts(s){ try { return new Date(s + 'Z').toLocaleString(undefined, {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}); } catch { return s; } }
+
+function seedServiceSelect(incidents){
+  const sv = $('service');
+  const seen = new Set();
+  (incidents || []).forEach(i => { if (i.service && !seen.has(i.service)) seen.add(i.service); });
+  const merged = [...seen, ...SERVICES.filter(s => !seen.has(s))];
+  sv.innerHTML = merged.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+}
+
+/* ---------- search ---------- */
+async function search(){
+  const desc = $('desc').value.trim();
+  if (!desc) { toast('Please describe the new incident first.'); $('desc').focus(); return; }
+  const btn = $('searchBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Searching memory…';
+  $('matches').innerHTML = '';
+  $('matchesInfo').textContent = 'searching the memory store…';
+  $('fix').value = '';
+  $('resolveMsg').textContent = '';
+  $('resolveBtn').disabled = true;
+  setPipeline(2);
+  try {
+    const r = await fetch('/api/search', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        description: desc,
+        service: $('service').value,
+        severity: $('severity').value,
+        top: 5, threshold: 0.22,
+      }),
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'search failed');
+    renderMatches(d.matches || []);
+    if (d.suggestion) {
+      $('fix').value = d.suggestion;
+      $('resolveBtn').disabled = false;
+      setPipeline(3);
+    }
+    if (d.llm_error) {
+      $('resolveMsg').className = 'err';
+      $('resolveMsg').textContent = 'Matches found, but the LLM call failed: ' + d.llm_error;
+    }
+    if (!d.suggestion && !d.llm_error) $('resolveMsg').textContent = 'No suggestion generated.';
+  } catch (e) {
+    $('matches').innerHTML = `<div class="empty">Error: ${esc(e.message)}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Search memory &amp; suggest fix';
+  }
+}
+
+function renderMatches(matches){
+  $('matchesInfo').textContent = matches.length + ' semantic match' + (matches.length === 1 ? '' : 'es') + ' from the memory store';
+  if (!matches.length) {
+    $('matches').innerHTML = `<div class="empty"><b>No similar incidents found</b> above the similarity threshold.<br>Try a different description, or resolve a few incidents first so the memory has more to draw from.</div>`;
+    return;
+  }
+  $('matches').innerHTML = matches.map(m => {
+    const pct = Math.round((m.score || 0) * 100);
+    return `<div class="match">
+      <div class="match-head">
+        <span class="mid">#${m.id}</span>
+        <span class="m-title">${esc(m.title)}</span>
+        <div class="m-tags">
+          ${m.service ? `<span class="pill">${esc(m.service)}</span>` : ''}
+          ${m.severity ? `<span class="pill ${SEV_CLASS[m.severity] || 'sev-medium'}">${esc(m.severity)}</span>` : ''}
+        </div>
+      </div>
+      <div class="match-score">
+        <div class="track"><div class="track-fill" style="width:${pct}%"></div></div>
+        <span class="score-pct">${pct}%</span>
+      </div>
+      <div class="m-desc">${esc(m.description)}</div>
+      ${m.root_cause ? `<details><summary>Root cause</summary><p>${esc(m.root_cause)}</p></details>` : ''}
+      ${m.resolution ? `<details><summary>Resolution</summary><p>${esc(m.resolution)}</p></details>` : ''}
+    </div>`;
+  }).join('');
+}
+
+/* ---------- mark resolved (write-back) ---------- */
+async function resolveFix(){
+  const desc = $('desc').value.trim();
+  const suggestion = $('fix').value.trim();
+  if (!desc || !suggestion) { toast('Need both the incident description and a fix.'); return; }
+  const btn = $('resolveBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Saving…';
+  $('resolveMsg').className = '';
+  $('resolveMsg').textContent = '';
+  setPipeline(4);
+  try {
+    const r = await fetch('/api/resolve', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        description: desc,
+        suggestion: suggestion,
+        service: $('service').value,
+        severity: $('severity').value,
+      }),
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'resolve failed');
+    lastNewId = d.incident.id;
+    $('resolveMsg').textContent = 'Saved #' + d.incident.id + ' — the next similar incident will cite this fix.';
+    toast('Saved <b>#' + d.incident.id + '</b> — memory is now <b>' + d.total + '</b> incidents. '
+      + '<button class="btn-text" id="undoBtn">Undo</button>');
+    $('undoBtn').addEventListener('click', () => undoResolve(d.incident.id));
+    $('fix').value = '';
+    loadIncidents();
+  } catch (e) {
+    $('resolveMsg').className = 'err';
+    $('resolveMsg').textContent = e.message;
+  } finally {
+    btn.disabled = true;
+    btn.innerHTML = 'Mark resolved';
+  }
+}
+
+/* ---------- memory lifecycle: delete / restore / purge / export / import ---------- */
+$('rows').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-action]');
+  if (!btn) return;
+  const { action, id } = btn.dataset;
+  if (action === 'delete') {
+    if (!confirm('Remove incident #' + id + ' from memory? It can be restored later.')) return;
+    postAction('/api/incidents/' + id + '/delete', 'Deleted #' + id + ' — it no longer matches searches.');
+  } else if (action === 'restore') {
+    postAction('/api/incidents/' + id + '/restore', 'Restored #' + id + ' — back in memory.');
+  } else if (action === 'purge') {
+    if (!confirm('Permanently delete incident #' + id + ' from Postgres and Qdrant? This cannot be undone.')) return;
+    postAction('/api/incidents/' + id + '/purge', 'Purged #' + id + ' permanently.');
+  }
+});
+
+async function postAction(url, okMsg){
+  try {
+    const r = await fetch(url, {method: 'POST'});
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'action failed');
+    toast(okMsg + ' Memory is now <b>' + d.total + '</b> incidents.');
+    loadIncidents();
+  } catch (e) { toast(e.message); }
+}
+
+function undoResolve(id){
+  // Dismiss the toast immediately so the button can't be double-fired.
+  $('toast').classList.remove('show');
+  fetch('/api/incidents/' + id + '/delete', {method: 'POST'})
+    .then(r => r.json())
+    .then(d => {
+      if (!d.ok) throw new Error(d.error || 'undo failed');
+      toast('Undone — #' + id + ' removed from memory. Now <b>' + d.total + '</b> incidents.');
+      loadIncidents();
+      setPipeline(1);
+    })
+    .catch(e => toast(e.message));
+}
+
+$('exportBtn').addEventListener('click', () => { window.location = '/api/export'; });
+$('importBtn').addEventListener('click', () => $('importFile').click());
+$('importFile').addEventListener('change', e => importMemory(e.target.files[0]));
+
+function importMemory(file){
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async () => {
+    try {
+      const r = await fetch('/api/import', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: reader.result,
+      });
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.error || 'import failed');
+      toast('Imported <b>' + d.rows_created + '</b> new and updated <b>' + d.rows_updated +
+        '</b> incidents — memory is now <b>' + d.total + '</b>.');
+      const loaded = await loadIncidents();
+      if (loaded) seedServiceSelect(loaded.incidents);
+    } catch (e) { toast('Import failed: ' + e.message); }
+  };
+  reader.readAsText(file);
+  $('importFile').value = '';
+}
+
+/* ---------- toast ---------- */
+let toastTimer;
+function toast(html){
+  $('toast').innerHTML = html;
+  $('toast').classList.add('show');
+  clearTimeout(toastTimer);
+  const hasAction = html.includes('<button');
+  toastTimer = setTimeout(() => $('toast').classList.remove('show'), hasAction ? 12000 : 4200);
+}
+
+/* ---------- init ---------- */
+$('searchBtn').addEventListener('click', search);
+$('desc').addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') search();
+});
+$('resolveBtn').addEventListener('click', resolveFix);
+$('severity').innerHTML = SEVERITIES.map(s => `<option value="${s}">${s}</option>`).join('');
+loadIncidents().then(d => { if (d) seedServiceSelect(d.incidents); });
+</script>
+</body>
+</html>

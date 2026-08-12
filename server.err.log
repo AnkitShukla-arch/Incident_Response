@@ -1,0 +1,14 @@
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on http://127.0.0.1:5000
+Press CTRL+C to quit
+127.0.0.1 - - [12/Aug/2026 04:18:42] "GET /api/incidents HTTP/1.1" 200 -
+127.0.0.1 - - [12/Aug/2026 04:18:42] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [12/Aug/2026 04:19:05] "GET /api/incidents HTTP/1.1" 200 -
+127.0.0.1 - - [12/Aug/2026 04:19:05] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [12/Aug/2026 04:19:13] "GET /api/export HTTP/1.1" 200 -
+127.0.0.1 - - [12/Aug/2026 04:19:14] "POST /api/incidents/26/delete HTTP/1.1" 200 -
+127.0.0.1 - - [12/Aug/2026 04:19:16] "POST /api/incidents/26/restore HTTP/1.1" 200 -
+127.0.0.1 - - [12/Aug/2026 04:19:17] "GET /api/incidents HTTP/1.1" 200 -
+127.0.0.1 - - [12/Aug/2026 04:19:24] "GET /api/export HTTP/1.1" 200 -
+127.0.0.1 - - [12/Aug/2026 04:19:34] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [12/Aug/2026 04:19:34] "GET /api/incidents HTTP/1.1" 200 -
