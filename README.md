@@ -396,6 +396,7 @@ hackenv/Scripts/python.exe test_postmortem_webhook.py
 
 The `compare_pack/` folder is a portable benchmark kit: copy it to another system, recreate the venv + `.env`, seed the same 12 incidents, run `benchmark_perf.py`, and the append-only history makes the `/perf` trend chart plot **both machines side by side** — apples-to-apples retrieval quality, latency, and throughput.
 
+
 ---
 
 ## 🧭 Ideas to take it further
